@@ -13,6 +13,8 @@ LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 // Variables
 int mode = 0; // Deterniner mode d'affichage
 int nbTurn = 0; // Compte le nombre de tour en memoire. 
+int setRPMLight = 8000;
+bool shiftLightON = true;
 
 
 const int maxSizeTimeArray = 10;  // limite le nombre de Tour en memoire. 
@@ -22,7 +24,9 @@ unsigned long timeLastLap = 0;
 unsigned long timeBestLap = 0; 
 unsigned long timeArray[maxSizeTimeArray];
 
-int lastMode = 5;  // Determine le dernier mode 
+int lastMode = 6;  // Determine le dernier mode 
+int shiftLight = 8;  // Shift light
+int RPM = 9; // RPM inn for Engine
 int Boutton1 = 12; // PIN need to be change
 int Boutton2 = 11; // PIN need to be change
 int Boutton3 = 13; // PIN Need to be Change or change for IR reader. 
@@ -42,6 +46,8 @@ void setup()
   pinMode(Boutton1, INPUT);
   pinMode(Boutton2, INPUT);
   pinMode(Boutton3, INPUT);
+  pinMode(shiftLight, OUTPUT);
+  pinMode(RPM,INPUT);
   //pinMode(A4, INPUT); 
   //pinMode(A5, INPUT); 
   
@@ -70,8 +76,9 @@ void loop()
       }
     case 2:  // LEAN ANGLE
       {
-      mode = 0;  
-      break;
+        modeLeanAngle();
+        mode = 0;  
+        break;
       }
     case 3:  // G FORCE
       {
@@ -79,15 +86,20 @@ void loop()
         mode = 0;
         break;
       }
-
-    case 4:  // VIEW DATA
+      case 4:  // Shift light
+      {
+        modeShiftLight();
+        mode = 0;
+        break;
+      }
+    case 5:  // VIEW DATA
       {
         //modeView();
         mode = 0;
         break;
       }
 
-    case 5:  // ERASE DATA
+    case 6:  // ERASE DATA
       {
         modeErase();
         mode = 0;
@@ -115,13 +127,9 @@ void SwitchMode()
     if (digitalRead(Boutton1) == HIGH)
     {
      mode = mode + 1;
-     delay(200);
-     
+     delay(200); 
     }
-    if (mode > lastMode)
-    {
-      mode = 1;
-    }
+    if (mode > lastMode){mode = 1;}
     
     switch(mode)
     { 
@@ -146,13 +154,19 @@ void SwitchMode()
     case 4: 
       {
       lcd.setCursor(0,1);
-      lcd.print("4- VIEW LAP     ");
+      lcd.print("4- SET SHIFT LIGHT   ");
       break;
       }
     case 5: 
       {
       lcd.setCursor(0,1);
-      lcd.print("5- ERASE ALL    ");
+      lcd.print("5- VIEW LAP     ");
+      break;
+      }
+    case 6: 
+      {
+      lcd.setCursor(0,1);
+      lcd.print("6- ERASE ALL    ");
       break;
       }
     default:
@@ -207,6 +221,7 @@ void modeChrometer()
     Serial.print(digitalRead(Boutton1));
     Serial.print(digitalRead(Boutton2));
     Serial.println(digitalRead(Boutton3));
+    shiftLightFunction();  // allumer ou non la shift light
     timeLap = millis() - timeArray[nbTurn];  
 
     if (digitalRead(Boutton3) == HIGH)
@@ -255,9 +270,13 @@ void modeChrometer()
   }
 }
 
+void modeLeanAngle()
+{
+  shiftLightFunction();  // allumer ou non la shift light
+}
+
 void modeGForce()
 {
-
   int gMode = 0;
   
   lcd.clear();
@@ -276,8 +295,7 @@ void modeGForce()
      gMode = gMode + 1;
      delay(200);    
     }
-    if (gMode > 6){gMode = 1;}
-    
+    if (gMode > 6){gMode = 1;}   
     switch(gMode)
     { 
     case 1:
@@ -328,6 +346,7 @@ void modeGForce()
  
   while (digitalRead(Boutton1) == LOW and digitalRead(Boutton2) == LOW)
   {
+    shiftLightFunction();  // allumer ou non la shift light
     switch(gMode)
     {
     case 1:
@@ -357,6 +376,61 @@ void modeGForce()
     }
   }
   
+}
+
+void modeShiftLight()
+{
+  lcd.clear();
+  lcd.print("PUSH 2 BUTTON ");
+  lcd.setCursor(0,1);   
+  lcd.print("TO RETURN MENU");
+  delay(2000);
+  
+  lcd.clear();
+  lcd.print("PRESS 1 SET RPM");
+  lcd.setCursor(0,1);
+  lcd.print("PRESS 2 ON/OFF");
+  delay(2000);
+
+  lcd.clear();
+  lcd.print("SETTING LIGHT");
+  lcd.setCursor(0,1);
+  lcd.print("RPM LIGHT ");
+  lcd.setCursor(10,1);
+  lcd.print(setRPMLight);
+  lcd.print("       ");
+  
+  while(digitalRead(Boutton1)== LOW or digitalRead(Boutton2) == LOW)
+  {
+    if (digitalRead(Boutton1) == HIGH)
+    {
+      setRPMLight = setRPMLight + 250;
+      if (setRPMLight > 18000){setRPMLight = 4000;}
+      lcd.setCursor(10,1);
+      lcd.print(setRPMLight);
+      lcd.print("       ");
+      delay(200);     
+    }  
+    if (digitalRead(Boutton2) == HIGH)
+    {
+      lcd.setCursor(10,1);
+    
+      if (shiftLightON == false)
+      {
+        shiftLightON = true;
+        lcd.print("  ON         ");
+        delay(200);
+      }
+      else 
+      {
+        shiftLightON = false;
+        lcd.print("  OFF         ");
+        delay(200);
+      }      
+      lcd.print("       ");    
+    }
+    shiftLightFunction();  // allumer ou non la shift light
+  }  
 }
 
 void modeView()
@@ -478,6 +552,29 @@ void timePrint(long int timemillis, bool fix)
     if (milliseconde < 100){lcd.print("0");}
   }
   lcd.print(int(milliseconde));  
+}
+
+void shiftLightFunction()
+// function permettant a la shift light de fonctionner
+{
+  int RPMPulse, RPM;
+  
+  if (shiftLightON == true) // vérifie que l'utilisateur veux le shift light. 
+  {
+    RPMPulse = pulseIn(RPM,HIGH,75000);  // pulseIn fonctionne en MICRO seconde  1millis = 1000micro
+    if (RPMPulse < 1) {RPMPulse = 1;}
+    RPM = int(60000000 / RPMPulse);
+    Serial.print(setRPMLight);
+    Serial.print(RPM);
+    Serial.print(shiftLightON);
+    Serial.println(RPMPulse);
+    
+    if (RPM >= setRPMLight) // check RPM vs setting. 
+      {digitalWrite(shiftLight, HIGH); } // allume la shift light
+    else  // Ferme la shift light pour éviter qu'elle rest allumée. 
+      {digitalWrite(shiftLight,LOW);}
+  }
+  else {digitalWrite(shiftLight,LOW); }  // s'assure que la shift light reste a OFF
 }
 
 
