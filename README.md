@@ -1,5 +1,5 @@
-# Moto-Track
-Display for track bike
+# Moto-Track 
+Display for track bike based on arduino nano
 OPEN SOURCE
  display: 
  -lap time 
