@@ -11,28 +11,29 @@
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);  
 ADXL345 adxl = ADXL345();             // USE FOR I2C COMMUNICATION
 
+// Constante
+const int maxSizeTimeArray = 10;  // limite le nombre de Tour en memoire. 
+const int mGForce = 4;  // Accepted values are 2g, 4g, 8g or 16g
+
+
 // Variables
-int mode = 0; // Deterniner mode d'affichage
 int nbTurn = 0; // Compte le nombre de tour en memoire. 
 int setRPMLight = 8000;
 bool shiftLightON = true;
-
-
-const int maxSizeTimeArray = 10;  // limite le nombre de Tour en memoire. 
-
 unsigned long timeLap;
 unsigned long timeLastLap = 0;
 unsigned long timeBestLap = 0; 
 unsigned long timeArray[maxSizeTimeArray];
 
-int lastMode = 6;  // Determine le dernier mode 
+
 int shiftLight = 8;  // Shift light
-int RPM = 9; // RPM inn for Engine
+int RPM = 9; // RPMpulse inn form the Engine
 int Boutton1 = 12; // PIN need to be change
 int Boutton2 = 11; // PIN need to be change
 int Boutton3 = 13; // PIN Need to be Change or change for IR reader. 
+int maxLean[2] = {0,0};
 
-int mGForce = 4;  // Accepted values are 2g, 4g, 8g or 16g
+
 float maxGForceArray[6] = {0,0,0,0,0,0}; // {minX, maxX, minY, maxY, minZ, maxZ}
 
 
@@ -47,9 +48,7 @@ void setup()
   pinMode(Boutton3, INPUT);
   pinMode(shiftLight, OUTPUT);
   pinMode(RPM,INPUT);
-  //pinMode(A4, INPUT); 
-  //pinMode(A5, INPUT); 
-  
+   
   lcd.begin(16, 2);  //LCD Columns and rows
   lcd.clear();
   lcd.print("WELCOME MOTOTEST");
@@ -63,78 +62,76 @@ void setup()
   adxl.setActivityXYZ(1, 1, 1);       // Set to activate movement detection in the axes "adxl.setActivityXYZ(X, Y, Z);" (1 == ON, 0 == OFF)
   adxl.setActivityThreshold(75);      // 62.5mg per increment   // Set activity   // Inactivity thresholds (0-255)                                    
 
-  SwitchMode();
+  
 
 }
 
 void loop() 
 {
-  switch(mode)
+  switch(SwitchMode())
   {
     case 1: // LAP TIME
       {
-      modeChrometer();
-      mode = 0;
-      break;
+        modeChrometer();
+        //mode = 0;
+        break;
       }
     case 2:  // LEAN ANGLE
       {
         modeLeanAngle();
-        mode = 0;  
+        //mode = 0;  
         break;
       }
     case 3:  // G FORCE
       {
         modeGForce();
-        mode = 0;
+        //mode = 0;
         break;
       }
       case 4:  // Shift light
       {
         modeShiftLight();
-        mode = 0;
+        //mode = 0;
         break;
       }
     case 5:  // VIEW DATA
       {
         //modeView();
-        mode = 0;
+        //mode = 0;
         break;
       }
 
     case 6:  // ERASE DATA
       {
         modeErase();
-        mode = 0;
+        //mode = 0;
         break;
       }
 
-    default:
+    /*default:
       {
-        SwitchMode();
+        mode = SwitchMode();
         break;
-      }
+      }*/
   }
 
 }
 
-void SwitchMode()
+int SwitchMode()
 {
+  int sMode = 0; 
+  int lastMode = 6;  // Determine le dernier mode 
+  
   lcd.setCursor(0,0);
   lcd.print("CHOSE YOUR MODE ");
   delay(100);
-  
-  
   while(digitalRead(Boutton2) == LOW)
   {
-    if (digitalRead(Boutton1) == HIGH)
-    {
-     mode = mode + 1;
-     delay(200); 
-    }
-    if (mode > lastMode){mode = 1;}
+    if (digitalRead(Boutton1) == HIGH){sMode = sMode + 1; delay(200); }
     
-    switch(mode)
+    if (sMode > lastMode){sMode = 1;}
+    
+    switch(sMode)
     { 
     case 1:
       {
@@ -180,16 +177,13 @@ void SwitchMode()
       } 
     }
   }
+  return sMode;
 }
 
 void modeChrometer()
 //fonction chronometer. 
 {
-  lcd.clear();
-  lcd.print("PUSH 2 BUTTON ");
-  lcd.setCursor(0,1);
-  lcd.print("TO RETURN MENU");
-  delay(5000);
+  modeStart();
   
   lcd.clear();
   lcd.print ("START IN 5 SEC");
@@ -275,87 +269,102 @@ void modeChrometer()
 
 void modeLeanAngle()
 {
-  shiftLightFunction();  // allumer ou non la shift light
+  int modeLA = 0;
+  modeStart();
+  
+  lcd.clear();
+  lcd.print("MODE Lean Angle");
+  
+  while(digitalRead(Boutton2) == LOW)
+  {   
+    if (digitalRead(Boutton1) == HIGH){ modeLA = modeLA + 1; delay(200);  }
+    if (modeLA > 2){modeLA = 1;}
+       
+    switch(modeLA)
+    { 
+      case 1:
+      {
+        lcd.setCursor(0,1);
+        lcd.print("1- Lean Angle");
+        break;
+      }
+      case 2:
+      {
+        lcd.setCursor(0,1);
+        lcd.print("2- Erase LA Record   ");
+        break;
+      }
+      default:
+      {
+        lcd.setCursor(0,1);
+        lcd.print("B #1 TO SWITCH  ");
+        break;
+      }
+    }
+  }  
+  
+  switch (modeLA)
+  {
+   case 1:
+   {
+     while (digitalRead(Boutton1) == LOW or digitalRead(Boutton2) == LOW)
+     {
+      shiftLightFunction();  // allumer ou non la shift light
+      
+  
+    // accelerometer Read data
+
+    // Compare to MAX
+
+  
+    lcd.clear();
+    lcd.print("Lean ");
+    /*
+    if (ROOL) 
+    {
+    lcd.print("LEFT ");
+    lcd.print();
+    }
+    else
+    {
+    lcd.print("RIGHT ");
+    lcd.print();
+    }
+    lcd.setCursor(0,1);
+    lcd.print("MAX L ");
+    lcd.print(maxLean[0]);
+    lcd.print(" R ");
+    lcd.print(maxLean[1]);
+    */
+    
+    }
+   }
+   case 2:
+   {
+    
+   }
+ }
 }
 
 void modeGForce()
 {
-  int gMode = 0;
-  
-  lcd.clear();
-  lcd.print("PUSH 2 BUTTON ");
-  lcd.setCursor(0,1);
-  lcd.print("TO RETURN MENU");
-  delay(2000);
-  lcd.clear();
-  lcd.print("B #2 TO CONFIRM ");
-  lcd.setCursor(0,1);
-    
-  while(digitalRead(Boutton2) == LOW)
-  {
-    if (digitalRead(Boutton1) == HIGH)
-    {
-     gMode = gMode + 1;
-     delay(200);    
-    }
-    if (gMode > 6){gMode = 1;}   
-    switch(gMode)
-    { 
-    case 1:
-      {
-      lcd.setCursor(0,1);
-      lcd.print("1- ACTUAL G Force");
-      break;
-      }
-    case 2:
-      {
-      lcd.setCursor(0,1);
-      lcd.print("2- X Force      ");
-      break;
-      }
-    case 3: 
-      {
-      lcd.setCursor(0,1);
-      lcd.print("3- Y Force      ");
-      break;
-      }
-    case 4: 
-      {
-      lcd.setCursor(0,1);
-      lcd.print("4- Z Force      ");
-      break;
-      }
-    case 5: 
-      {
-      lcd.setCursor(0,1);
-      lcd.print("4- ALL Best     ");
-      break;
-      }  
-    case 6: 
-      {
-      lcd.setCursor(0,1);
-      lcd.print("5- ERASE GForce");
-      break;
-      }
-    default:
-      {
-      lcd.setCursor(0,1);
-      lcd.print("B #1 TO SWITCH  ");
-      break;
-      } 
-    }
-  }
+  modeStart();
+  int gMode = gForceModeSwitch();
   
   delay(200);
   while (digitalRead(Boutton1) == LOW or digitalRead(Boutton2) == LOW)
   {
     int x,y,z;  
     float gX,gY,gZ; 
+    
+    if (digitalRead(Boutton1) == HIGH or digitalRead(Boutton2 == HIGH)) {gMode = gForceModeSwitch();}  // retour au menu de G Force. 
+    
     if (gMode <= 4)  // Arret de nouvelle lecture en visionement et effacement. 
     {
       shiftLightFunction();  // allumer ou non la shift light
       // Accelerometer Readings 
       adxl.readAccel(&x, &y, &z);         // Read the accelerometer values and store them in variables declared above x,y,z
+      // Conversion du reading en G force. 
       gX = mapfloat(x,-255,255,-mGForce/2,mGForce/2);
       gY = mapfloat(y,-255,255,-mGForce/2,mGForce/2);
       gZ = mapfloat(z,-255,255,-mGForce/2,mGForce/2);
@@ -486,30 +495,89 @@ void modeGForce()
         lcd.clear();
         lcd.print("WARNING");
         lcd.setCursor(0,1);
-        lcd.print("WILL ERASE G Force");     
+        lcd.print("ERASE G Force");     
         delay(2000);
         if (digitalRead(Boutton1)== HIGH and digitalRead(Boutton2) == HIGH)
         {
           for (int i = 0; i <= 5 ; i++){maxGForceArray[i] = 0;}
           lcd.clear();
           lcd.print("ERASE COMPLETE");
-          delay(1000);
+          delay(2000);
         }
        } 
        break;
      }
     }
   }
-  
+}
+
+int gForceModeSwitch()
+{
+  int gModeSwitch = 0;
+  lcd.clear();
+  lcd.print("B #2 TO CONFIRM ");
+  lcd.setCursor(0,1);
+    
+  while(digitalRead(Boutton2) == LOW)
+  {
+    if (digitalRead(Boutton1) == HIGH)
+    {
+     gModeSwitch = gModeSwitch + 1;
+     delay(200);    
+    }
+    if (gModeSwitch > 6){gModeSwitch = 1;}   
+    switch(gModeSwitch)
+    { 
+    case 1:
+      {
+      lcd.setCursor(0,1);
+      lcd.print("1- ACTUAL G Force");
+      break;
+      }
+    case 2:
+      {
+      lcd.setCursor(0,1);
+      lcd.print("2- X Force      ");
+      break;
+      }
+    case 3: 
+      {
+      lcd.setCursor(0,1);
+      lcd.print("3- Y Force      ");
+      break;
+      }
+    case 4: 
+      {
+      lcd.setCursor(0,1);
+      lcd.print("4- Z Force      ");
+      break;
+      }
+    case 5: 
+      {
+      lcd.setCursor(0,1);
+      lcd.print("4- ALL Best     ");
+      break;
+      }  
+    case 6: 
+      {
+      lcd.setCursor(0,1);
+      lcd.print("5- ERASE GForce");
+      break;
+      }
+    default:
+      {
+      lcd.setCursor(0,1);
+      lcd.print("B #1 TO SWITCH  ");
+      break;
+      } 
+    }
+  }
+  return gModeSwitch;
 }
 
 void modeShiftLight()
 {
-  lcd.clear();
-  lcd.print("PUSH 2 BUTTON ");
-  lcd.setCursor(0,1);   
-  lcd.print("TO RETURN MENU");
-  delay(2000);
+  modeStart();
   
   lcd.clear();
   lcd.print("PRESS 1 SET RPM");
@@ -564,11 +632,7 @@ void modeView()
   delay(200);
   while(digitalRead(Boutton1)== LOW and digitalRead(Boutton2) == LOW)
   {
-    lcd.clear();
-    lcd.print("PUSH 2 BUTTON ");
-    lcd.setCursor(0,1);
-    lcd.print("TO RETURN MENU");
-    delay(2000);
+    modeStart();
   
     lcd.clear();
     lcd.print("PRESS 1 GO FOWARD");
@@ -637,6 +701,7 @@ void modeErase()
       for (int i = 0; i < maxSizeTimeArray; i++){timeArray[i] = {};}
       nbTurn = 0;
       for (int i = 0; i <= 5 ; i++){maxGForceArray[i] = 0;}
+      for (int i = 0; i <= 1; i ++) {maxLean[i] = 0; }
       lcd.clear();
       lcd.print("ERASE COMPLETE");
       delay(1000);
@@ -703,8 +768,17 @@ void shiftLightFunction()
   else {digitalWrite(shiftLight,LOW); }  // s'assure que la shift light reste a OFF
 }
 
+void modeStart()
+{
+  lcd.clear();
+  lcd.print("PUSH 2 BUTTON ");
+  lcd.setCursor(0,1);
+  lcd.print("TO RETURN MENU");
+  delay(2000);
+} 
+
 float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
-// Same as Map but work with Foloat.
+// Same as Map but work with Float.
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
