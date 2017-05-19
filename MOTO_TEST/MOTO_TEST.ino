@@ -5,10 +5,11 @@
 // Libraries
 
 # include <LiquidCrystal.h>
+#include <SparkFun_ADXL345.h>         // SparkFun ADXL345 Library
 
 // initialize the librarys and the numbers of the interface pins
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);  
-
+ADXL345 adxl = ADXL345();             // USE FOR I2C COMMUNICATION
 
 // Variables
 int mode = 0; // Deterniner mode d'affichage
@@ -31,10 +32,8 @@ int Boutton1 = 12; // PIN need to be change
 int Boutton2 = 11; // PIN need to be change
 int Boutton3 = 13; // PIN Need to be Change or change for IR reader. 
 
-
-/// Accelorometer 
-
-
+int mGForce = 4;  // Accepted values are 2g, 4g, 8g or 16g
+float maxGForceArray[6] = {0,0,0,0,0,0}; // {minX, maxX, minY, maxY, minZ, maxZ}
 
 
 void setup() 
@@ -58,7 +57,11 @@ void setup()
   lcd.clear();
 
 ///// ADXL345
-
+  adxl.powerOn();                     // Power on the ADXL345
+  adxl.setRangeSetting(mGForce);           // Give the range settings
+                                      // Accepted values are 2g, 4g, 8g or 16g
+  adxl.setActivityXYZ(1, 1, 1);       // Set to activate movement detection in the axes "adxl.setActivityXYZ(X, Y, Z);" (1 == ON, 0 == OFF)
+  adxl.setActivityThreshold(75);      // 62.5mg per increment   // Set activity   // Inactivity thresholds (0-255)                                    
 
   SwitchMode();
 
@@ -343,36 +346,158 @@ void modeGForce()
     }
   }
   
- 
-  while (digitalRead(Boutton1) == LOW and digitalRead(Boutton2) == LOW)
+  delay(200);
+  while (digitalRead(Boutton1) == LOW or digitalRead(Boutton2) == LOW)
   {
-    shiftLightFunction();  // allumer ou non la shift light
+    int x,y,z;  
+    float gX,gY,gZ; 
+    if (gMode <= 4)  // Arret de nouvelle lecture en visionement et effacement. 
+    {
+      shiftLightFunction();  // allumer ou non la shift light
+      // Accelerometer Readings 
+      adxl.readAccel(&x, &y, &z);         // Read the accelerometer values and store them in variables declared above x,y,z
+      gX = mapfloat(x,-255,255,-mGForce/2,mGForce/2);
+      gY = mapfloat(y,-255,255,-mGForce/2,mGForce/2);
+      gZ = mapfloat(z,-255,255,-mGForce/2,mGForce/2);
+
+      //Check againgst the Minium and Maximum
+      if (gX < maxGForceArray[0] ) {maxGForceArray[0]  = gX;}
+      if (gX > maxGForceArray[1] ) {maxGForceArray[1]  = gX;}
+      if (gY < maxGForceArray[2] ) {maxGForceArray[2]  = gY;}
+      if (gY > maxGForceArray[3] ) {maxGForceArray[3]  = gX;}
+      if (gZ < maxGForceArray[4] ) {maxGForceArray[4]  = gZ;}
+      if (gZ > maxGForceArray[5] ) {maxGForceArray[5]  = gZ;}
+    }
+  
     switch(gMode)
     {
-    case 1:
+    case 1: // Actual G force
     {
+      lcd.clear();
+      lcd.print("G Force X ");
+      lcd.print(gX);
+      lcd.setCursor(0,1);
+      lcd.print("Y ");
+      lcd.print(gY);
+      lcd.setCursor(8,1);
+      lcd.print("Z ");
+      lcd.print(gZ);
       break;
     }
-    case 2:
+    case 2: // X G force
     {
+      lcd.clear();
+      lcd.print("Force X   ");
+      lcd.print(gX);
+      lcd.setCursor(0,1);
+      lcd.print("MIN");
+      lcd.print(maxGForceArray[0] );
+      lcd.setCursor(8,1);
+      lcd.print("MAX ");
+      lcd.print(maxGForceArray[1] );
       break;
     }
-    case 3:
+    case 3: // Y G Force
     {
+      lcd.clear();
+      lcd.print("Force Y   ");
+      lcd.print(gY);
+      lcd.setCursor(0,1);
+      lcd.print("MIN");
+      lcd.print(maxGForceArray[2] );
+      lcd.setCursor(8,1);
+      lcd.print("MAX ");
+      lcd.print(maxGForceArray[3] );
+      break; 
+    }
+    case 4:   // Z G Force
+    {
+      lcd.clear();
+      lcd.print("Force Z   ");
+      lcd.print(gZ);
+      lcd.setCursor(0,1);
+      lcd.print("MIN");
+      lcd.print(maxGForceArray[4] );
+      lcd.setCursor(8,1);
+      lcd.print("MAX ");
+      lcd.print(maxGForceArray[5] );
       break;
     }
-    case 4:
+    case 5:  // All Best
     {
+      bool m = true;
+      lcd.clear();
+      while (digitalRead(Boutton2) == LOW)
+      {
+         if (digitalRead(Boutton1) == HIGH) {m = !m; lcd.clear();}
+         if (m == true)
+         {
+          lcd.setCursor(0,0);
+          lcd.print("MAX G   X ");
+          lcd.print(maxGForceArray[1] );
+          lcd.setCursor(0,1);
+          lcd.print("Y ");
+          lcd.print(maxGForceArray[3] );
+          lcd.setCursor(8,1);
+          lcd.print("Z ");
+          lcd.print(maxGForceArray[5] ); 
+          delay(200);    
+         }
+         else
+         {
+          lcd.setCursor(0,0);     
+          lcd.print("MIN G   X ");
+          lcd.print(maxGForceArray[0] );
+          lcd.setCursor(0,1);
+          lcd.print("Y ");
+          lcd.print(maxGForceArray[2] );
+          lcd.setCursor(8,1);
+          lcd.print("Z ");
+          lcd.print(maxGForceArray[4] ); 
+          delay(200);       
+         }        
+      }
       break;
     }
-    case 5:
+    case 6:  // Erase Data
     {
-      break;
-    }
-    case 6:
-    {
-      break;
-    }
+      lcd.clear();
+      lcd.print(" G Force Mode");
+      lcd.setCursor(0,1);
+      lcd.print("WILL ERASE ALL G Rec");
+      delay(2000);
+      while(digitalRead(Boutton1)== LOW and digitalRead(Boutton2) == LOW)
+      {
+        lcd.clear();
+        lcd.print("PRESS TOW BUTTON");
+        lcd.setCursor(0,1);
+        lcd.print("FOR 2 SEC TO CFM");
+        delay(1500);
+        lcd.clear();
+        lcd.print("PRESS 1 BUTTON");
+        lcd.setCursor(0,1);
+        lcd.print("TO RETURN MENU");
+        delay(1500); 
+      }
+  
+      delay(200);
+      if (digitalRead(Boutton1)== HIGH and digitalRead(Boutton2) == HIGH)
+      {
+        lcd.clear();
+        lcd.print("WARNING");
+        lcd.setCursor(0,1);
+        lcd.print("WILL ERASE G Force");     
+        delay(2000);
+        if (digitalRead(Boutton1)== HIGH and digitalRead(Boutton2) == HIGH)
+        {
+          for (int i = 0; i <= 5 ; i++){maxGForceArray[i] = 0;}
+          lcd.clear();
+          lcd.print("ERASE COMPLETE");
+          delay(1000);
+        }
+       } 
+       break;
+     }
     }
   }
   
@@ -511,6 +636,7 @@ void modeErase()
     {
       for (int i = 0; i < maxSizeTimeArray; i++){timeArray[i] = {};}
       nbTurn = 0;
+      for (int i = 0; i <= 5 ; i++){maxGForceArray[i] = 0;}
       lcd.clear();
       lcd.print("ERASE COMPLETE");
       delay(1000);
@@ -575,6 +701,12 @@ void shiftLightFunction()
       {digitalWrite(shiftLight,LOW);}
   }
   else {digitalWrite(shiftLight,LOW); }  // s'assure que la shift light reste a OFF
+}
+
+float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
+// Same as Map but work with Foloat.
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
 
