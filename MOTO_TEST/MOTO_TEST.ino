@@ -31,7 +31,7 @@ int RPM = 9; // RPMpulse inn form the Engine
 int Boutton1 = 12; // PIN need to be change
 int Boutton2 = 11; // PIN need to be change
 int Boutton3 = 13; // PIN Need to be Change or change for IR reader. 
-int maxLean[2] = {0,0};
+int maxLean[2] = {14,16};
 
 
 float maxGForceArray[6] = {0,0,0,0,0,0}; // {minX, maxX, minY, maxY, minZ, maxZ}
@@ -278,20 +278,32 @@ void modeLeanAngle()
   while(digitalRead(Boutton2) == LOW)
   {   
     if (digitalRead(Boutton1) == HIGH){ modeLA = modeLA + 1; delay(200);  }
-    if (modeLA > 2){modeLA = 1;}
+    if (modeLA > 4){modeLA = 1;}
        
     switch(modeLA)
     { 
       case 1:
       {
         lcd.setCursor(0,1);
-        lcd.print("1- Lean Angle");
+        lcd.print("1- Lean Angle    ");
         break;
       }
       case 2:
       {
         lcd.setCursor(0,1);
-        lcd.print("2- Erase LA Record   ");
+        lcd.print("2- Max Lean   ");
+        break;
+      }
+      case 3:
+      {
+        lcd.setCursor(0,1);
+        lcd.print("3- View Max  ");
+        break;
+      }  
+      case 4:
+      {
+        lcd.setCursor(0,1);
+        lcd.print("4- Erase LA Record   ");
         break;
       }
       default:
@@ -307,43 +319,129 @@ void modeLeanAngle()
   {
    case 1:
    {
+     int lean;
+         
+     lcd.clear();
+     lcd.print("Actual Lean ");
+     lcd.setCursor(0,1);
+     lcd.print("LEFT ");
+     lcd.setCursor(8,1);
+     lcd.print("RIGHT ");
      while (digitalRead(Boutton1) == LOW or digitalRead(Boutton2) == LOW)
      {
       shiftLightFunction();  // allumer ou non la shift light
-      
-  
-    // accelerometer Read data
-
-    // Compare to MAX
-
-  
-    lcd.clear();
-    lcd.print("Lean ");
-    /*
-    if (ROOL) 
-    {
-    lcd.print("LEFT ");
-    lcd.print();
-    }
-    else
-    {
-    lcd.print("RIGHT ");
-    lcd.print();
-    }
-    lcd.setCursor(0,1);
-    lcd.print("MAX L ");
-    lcd.print(maxLean[0]);
-    lcd.print(" R ");
-    lcd.print(maxLean[1]);
-    */
-    
-    }
+      lean = accRead(); // lean = accelerometer Read data Function Return array with actual Lean and update maxLean. 
+      if (lean == 0)
+      { 
+        lcd.setCursor(0,1);
+        lcd.print("  CENTER        ");
+      }  
+      else if (lean < 0)
+      {
+        lcd.setCursor(0,1);
+        lcd.print("  LEFT         ");
+        lcd.setCursor (9,1);
+        lcd.print(abs(lean));
+      }
+      else if (lean > 0)
+      {
+        lcd.setCursor(0,1);
+        lcd.print("  RIGHT           ");
+        lcd.setCursor (9,1);
+        lcd.print(abs(lean));
+      }
+     }
    }
-   case 2:
+   case 2: // Max lean
    {
+    int lean = 0;
+    
+    lcd.clear();
+    lcd.print("MAX LEAN ANGLE");
+    lcd.setCursor(0,1);
+    lcd.print("LEFT ");
+    lcd.setCursor(8,1);
+    lcd.print("RIGHT ");
+    while (digitalRead(Boutton1) == LOW or digitalRead(Boutton2) == LOW)
+    {
+      shiftLightFunction(); // allumer ou non la shift light
+      lean = accRead(); // accelerometer Read data Function Return array with actual Lean and update maxLean. 
+      lcd.setCursor(5,1);
+      lcd.print(abs(maxLean[0]));
+      lcd.setCursor(14,1);
+      lcd.print(maxLean[1]);
+    }
+
+    break;
+   }
+   case 3: // View Max
+   {
+    lcd.clear();
+    lcd.print("VIEW MAX LEAN ");
+    lcd.setCursor(0,1);
+    lcd.print("LEFT ");
+    lcd.print(abs(maxLean[0]));
+    lcd.print("RIGHT ");
+    lcd.print(maxLean[1]);
+    while (digitalRead(Boutton1) == LOW or digitalRead(Boutton2)== LOW)
+     {
+      delay(200);
+     }
+     
+    break;
+   }
+   case 4:
+   {
+    lcd.clear();
+    lcd.print("CAUTION ERASE LA");
+    lcd.setCursor(0,1);
+    lcd.print("Both Button to CFM");
+    delay(3000);
+    if (digitalRead(Boutton1) == HIGH and digitalRead(Boutton2) == HIGH)
+    {
+      lcd.clear();
+      lcd.print("WARNING");
+      lcd.setCursor(0,1);
+      lcd.print("WILL ERASE LA");
+      delay(2000);    
+      if (digitalRead(Boutton1)== HIGH and digitalRead(Boutton2) == HIGH) {maxLean[0]= 0; maxLean[1] = 0;}
+      lcd.clear();
+      lcd.print("LA Erase complete");
+      delay(2000);      
+    }
     
    }
  }
+}
+
+// accelerometer Read data Function Return array with actual Lean and update maxLean. 
+int accRead()
+{
+  int x,y,z;  
+  int roll = 0;
+  
+  adxl.readAccel(&x, &y, &z);         // Read the accelerometer values and store them in variables declared above x,y,z
+
+  roll = -(int(atan2(float(x), float(z)) * 57.3));
+  Serial.print("ROLL ");
+  Serial.println(roll);
+
+  //Update the max lean
+  if (roll > 0)
+  {
+    if (maxLean[1] < roll) { maxLean[1] = roll;}
+  }
+  else 
+  {
+    if (maxLean[0] > roll) {maxLean[0] = roll;}
+  }
+
+  Serial.print("maxLean ");
+  Serial.print(maxLean[0]);
+  Serial.print("   ");
+  Serial.println(maxLean[1]);
+
+  return roll;
 }
 
 void modeGForce()
